@@ -82,9 +82,9 @@ app.use('/api/workspace', workspaceRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/notifications', notificationRoutes);
 
-// 5. Gestion des routes non trouvees (Correction pour Express 5)
-// La syntaxe '*' est remplacee par '(.*)' pour attraper tout le reste
-app.all('(.*)', (req, res, next) => {
+// 5. Gestion des routes non trouvees (Correction finale Express 5)
+// Utilisation d'un middleware simple sans pattern Regex complexe
+app.use((req, res, next) => {
   next(new AppError(`Impossible de trouver ${req.originalUrl} sur ce serveur!`, 404));
 });
 
