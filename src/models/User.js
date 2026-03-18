@@ -60,8 +60,16 @@ const userSchema = new mongoose.Schema(
     },
     following: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     followers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-    // NOUVEAU: Stockage des tokens d'appareils pour les notifications Push FCM
-    fcmTokens: [{ type: String }]
+    fcmTokens: [{ type: String }],
+    isDeleted: {
+      type: Boolean,
+      default: false,
+      select: false,
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
+    }
   },
   {
     timestamps: true,

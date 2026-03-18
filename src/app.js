@@ -12,16 +12,16 @@ const logger = require('./config/logger');
 const AppError = require('./utils/AppError');
 const globalErrorHandler = require('./middlewares/errorHandler');
 
-// Import des routes
 const authRoutes = require('./routes/authRoutes');
 const socialRoutes = require('./routes/socialRoutes');
 const workspaceRoutes = require('./routes/workspaceRoutes');
 const chatRoutes = require('./routes/chatRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+const userRoutes = require('./routes/userRoutes');
 
 const app = express();
 
-// 1. Middlewares globaux de Securite
 app.use(helmet());
 
 app.use(cors({
@@ -40,13 +40,10 @@ const limiter = rateLimit({
 });
 app.use('/api', limiter);
 
-// 2. Parsers et Compression
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(cookieParser());
 app.use(compression());
-
-// 3. Middlewares de nettoyage des donnees
 app.use(mongoSanitize());
 
 app.use((req, res, next) => {
@@ -67,7 +64,6 @@ if (env.NODE_ENV === 'development') {
   });
 }
 
-// 4. Routes de l'API
 app.get('/', (req, res) => {
   res.status(200).json({ status: 'success', message: 'Bienvenue sur l API StudyDrive' });
 });
@@ -81,14 +77,13 @@ app.use('/api/social', socialRoutes);
 app.use('/api/workspace', workspaceRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/users', userRoutes);
 
-// 5. Gestion des routes non trouvees (Correction finale Express 5)
-// Utilisation d'un middleware simple sans pattern Regex complexe
 app.use((req, res, next) => {
   next(new AppError(`Impossible de trouver ${req.originalUrl} sur ce serveur!`, 404));
 });
 
-// 6. Gestionnaire d'erreurs global
 app.use(globalErrorHandler);
 
 module.exports = app;
