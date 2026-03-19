@@ -46,6 +46,7 @@ const loginUser = async (identifier, password) => {
   if (!isPasswordCorrect) {
     throw new AppError('Identifiants incorrects.', 401);
   }
+  
 
   const userResponse = user.toObject();
   delete userResponse.password;
