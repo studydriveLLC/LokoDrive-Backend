@@ -51,3 +51,8 @@ exports.trackDownload = async (id) => {
   if (!resource) throw new AppError('Ressource non trouvée', 404);
   return resource;
 };
+
+exports.createResource = async (resourceData) => {
+  const resource = await Resource.create(resourceData);
+  return resource;
+};

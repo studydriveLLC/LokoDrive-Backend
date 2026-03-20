@@ -25,7 +25,7 @@ const resourceSchema = new mongoose.Schema({
   },
   format: {
     type: String,
-    enum: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'txt'],
+    enum: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'txt', 'jpg', 'png'],
     default: 'pdf'
   },
   category: { 

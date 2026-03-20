@@ -1,5 +1,6 @@
 const resourceService = require('../services/resourceService');
 const catchAsync = require('../utils/catchAsync');
+const AppError = require('../utils/AppError');
 
 exports.getResources = catchAsync(async (req, res) => {
   const data = await resourceService.getAllResources(req.query);
@@ -25,5 +26,35 @@ exports.logDownload = catchAsync(async (req, res) => {
       id: resource._id,
       downloads: resource.downloads 
     }
+  });
+});
+
+exports.uploadResource = catchAsync(async (req, res) => {
+  if (!req.file) {
+    throw new AppError('Aucun fichier n\'a été reçu', 400);
+  }
+
+  let format = 'pdf';
+  if (req.file.mimetype === 'image/jpeg') format = 'jpg';
+  if (req.file.mimetype === 'image/png') format = 'png';
+  if (req.file.mimetype.includes('wordprocessingml.document')) format = 'docx';
+  if (req.file.mimetype === 'application/msword') format = 'doc';
+
+  const resourceData = {
+    title: req.body.title,
+    description: req.body.description,
+    category: req.body.category,
+    level: req.body.level,
+    fileUrl: req.file.path, 
+    fileSize: req.file.size || 0, 
+    format: format,
+    uploadedBy: req.user._id 
+  };
+
+  const newResource = await resourceService.createResource(resourceData);
+
+  res.status(201).json({
+    status: 'success',
+    data: { resource: newResource }
   });
 });
