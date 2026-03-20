@@ -9,7 +9,7 @@ const registerSchema = z.object({
     email: z.string().email("Format d'email invalide"),
     university: z.string().min(2, "Le nom de l'université est requis"),
     password: z.string().min(8, "Le mot de passe doit contenir au moins 8 caractères"),
-  }).strict(), // Interdit les champs supplementaires non declares
+  }).strict(),
 });
 
 const loginSchema = z.object({
@@ -19,14 +19,20 @@ const loginSchema = z.object({
   }).strict(),
 });
 
-// Middleware de validation generique Zod
+// Middleware de validation générique Zod optimisé
 const validate = (schema) => (req, res, next) => {
   try {
-    schema.parse({
+    // La bonne pratique : on parse ET on réassigne pour nettoyer les champs toxiques
+    const parsed = schema.parse({
       body: req.body,
       query: req.query,
       params: req.params,
     });
+    
+    req.body = parsed.body;
+    req.query = parsed.query;
+    req.params = parsed.params;
+    
     next();
   } catch (error) {
     const errors = error.errors.map((err) => ({
@@ -36,7 +42,7 @@ const validate = (schema) => (req, res, next) => {
     
     return res.status(400).json({
       status: 'fail',
-      message: 'Erreur de validation des donnees',
+      message: 'Erreur de validation des données',
       errors,
     });
   }

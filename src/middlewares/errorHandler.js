@@ -9,10 +9,11 @@ const handleCastErrorDB = (err) => {
 
 const handleDuplicateFieldsDB = (err) => {
   const sourceString = err.errmsg || err.message;
+  // Regex améliorée pour extraire la valeur dupliquée (Mongo 11000)
   const match = sourceString.match(/(["'])(\\?.)*?\1/);
   const value = match ? match[0] : 'Valeur';
   
-  const message = `Valeur dupliquée: ${value}. Veuillez utiliser une autre valeur.`;
+  const message = `Cette donnée existe déjà : ${value}. Veuillez utiliser une autre valeur.`;
   return new AppError(message, 400);
 };
 
@@ -65,10 +66,14 @@ module.exports = (err, req, res, next) => {
     sendErrorDev(err, res);
   } else if (env.NODE_ENV === 'production') {
     let error = { ...err };
+    
+    // TRANSFERT MANUEL CRITIQUE DES PROPRIÉTÉS
     error.message = err.message;
     error.name = err.name;
-    error.code = err.code; // <- LIGNE POUR REPARER L'ERREUR 11000 MONGO
+    error.code = err.code;
     error.errmsg = err.errmsg;
+    error.isOperational = err.isOperational; // <-- LE FIX EST ICI
+    error.statusCode = err.statusCode;       // <-- ET ICI
 
     if (error.name === 'CastError') error = handleCastErrorDB(error);
     if (error.code === 11000) error = handleDuplicateFieldsDB(error);
@@ -77,6 +82,7 @@ module.exports = (err, req, res, next) => {
     if (error.name === 'JsonWebTokenError') error = handleJWTError();
     if (error.name === 'TokenExpiredError') error = handleJWTExpiredError();
 
+    // On passe 'error' réparé à sendErrorProd
     sendErrorProd(error, res);
   }
 };
