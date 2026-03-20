@@ -35,36 +35,51 @@ exports.logDownload = catchAsync(async (req, res) => {
 });
 
 exports.uploadResource = catchAsync(async (req, res, next) => {
+  console.log('[UPLOAD DEBUG] Entree dans uploadResource Controller');
+  
   if (!req.file) {
-    return next(new AppError('Aucun fichier n\'a ete recu.', 400));
+    console.error('[UPLOAD ERROR] req.file est undefined. Le fichier n\'a pas passe Multer ou n\'a pas ete envoye correctement.');
+    return next(new AppError('Aucun fichier n\'a ete recu. Verifiez la requete.', 400));
   }
+
+  console.log(`[UPLOAD DEBUG] Fichier recu par Multer : ${req.file.originalname} (${req.file.size} bytes)`);
+  console.log(`[UPLOAD DEBUG] Donnees du corps (req.body) :`, req.body);
 
   const { title, category, level, description } = req.body;
 
   const format = getFormatFromMime(req.file.mimetype, req.file.originalname);
   const defaultDescription = description || `Document de ${category} pour le niveau ${level}.`;
 
-  const resource = await resourceService.createResource({
-    title,
-    description: defaultDescription,
-    category,
-    level,
-    format,
-    fileSize: req.file.size,
-    uploadedBy: req.user._id,
-    tempFilePath: req.file.path,
-    status: 'processing'
-  });
+  try {
+    console.log('[UPLOAD DEBUG] Creation de la ressource en base de donnees...');
+    const resource = await resourceService.createResource({
+      title,
+      description: defaultDescription,
+      category,
+      level,
+      format,
+      fileSize: req.file.size,
+      uploadedBy: req.user._id,
+      tempFilePath: req.file.path,
+      status: 'processing'
+    });
+    console.log(`[UPLOAD DEBUG] Ressource cree avec succes (ID: ${resource._id})`);
 
-  await uploadQueue.add('upload-to-cloudinary', {
-    resourceId: resource._id.toString(),
-    tempFilePath: req.file.path,
-    originalName: req.file.originalname
-  });
+    console.log('[UPLOAD DEBUG] Ajout de la tache dans uploadQueue...');
+    await uploadQueue.add('upload-to-cloudinary', {
+      resourceId: resource._id.toString(),
+      tempFilePath: req.file.path,
+      originalName: req.file.originalname
+    });
+    console.log('[UPLOAD DEBUG] Tache ajoutee a la file d\'attente avec succes.');
 
-  res.status(202).json({
-    status: 'success',
-    message: 'Votre document est en cours de traitement. Il sera disponible dans quelques instants.',
-    data: { resource }
-  });
+    res.status(202).json({
+      status: 'success',
+      message: 'Votre document est en cours de traitement. Il sera disponible dans quelques instants.',
+      data: { resource }
+    });
+  } catch (error) {
+    console.error('[UPLOAD ERROR CRITIQUE] Erreur lors de la creation de la ressource ou l\'ajout a la queue :', error);
+    return next(new AppError('Erreur interne lors du traitement du fichier.', 500));
+  }
 });
