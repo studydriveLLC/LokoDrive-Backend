@@ -1,8 +1,20 @@
 const resourceService = require('../services/resourceService');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/AppError');
-const cloudinary = require('../config/cloudinary');
-const fs = require('fs');
+const { uploadQueue } = require('../workers/uploadQueue');
+const path = require('path');
+
+const getFormatFromMime = (mimetype, filename) => {
+  if (mimetype === 'application/pdf') return 'pdf';
+  if (mimetype === 'application/msword') return 'doc';
+  if (mimetype.includes('wordprocessingml.document')) return 'docx';
+  if (mimetype.includes('spreadsheetml.sheet')) return 'xlsx';
+  if (mimetype === 'image/jpeg') return 'jpg';
+  if (mimetype === 'image/png') return 'png';
+
+  const ext = path.extname(filename).replace('.', '').toLowerCase();
+  return ext || 'pdf';
+};
 
 exports.getResources = catchAsync(async (req, res) => {
   const data = await resourceService.getAllResources(req.query);
@@ -16,53 +28,43 @@ exports.getResource = catchAsync(async (req, res) => {
 
 exports.logDownload = catchAsync(async (req, res) => {
   const resource = await resourceService.trackDownload(req.params.id);
-  res.status(200).json({ status: 'success', data: { id: resource._id, downloads: resource.downloads } });
+  res.status(200).json({
+    status: 'success',
+    data: { id: resource._id, downloads: resource.downloads }
+  });
 });
 
 exports.uploadResource = catchAsync(async (req, res, next) => {
   if (!req.file) {
-    return next(new AppError('Aucun fichier n\'a été reçu', 400));
+    return next(new AppError('Aucun fichier n\'a ete recu.', 400));
   }
 
-  let format = 'pdf';
-  if (req.file.mimetype === 'image/jpeg') format = 'jpg';
-  if (req.file.mimetype === 'image/png') format = 'png';
-  if (req.file.mimetype.includes('wordprocessingml.document')) format = 'docx';
-  if (req.file.mimetype === 'application/msword') format = 'doc';
-  if (req.file.mimetype.includes('spreadsheetml.sheet')) format = 'xlsx';
+  const { title, category, level, description } = req.body;
 
-  let cloudinaryResult;
-  try {
-    cloudinaryResult = await cloudinary.uploader.upload(req.file.path, {
-      folder: 'studydrive_resources',
-      resource_type: 'auto'
-    });
-  } catch (error) {
-    console.error('Erreur Cloudinary:', error);
-    return next(new AppError('Echec de l\'envoi vers le serveur de stockage. Vérifiez vos clés Cloudinary.', 500));
-  } finally {
-    if (req.file.path && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
-    }
-  }
+  const format = getFormatFromMime(req.file.mimetype, req.file.originalname);
+  const defaultDescription = description || `Document de ${category} pour le niveau ${level}.`;
 
-  const defaultDescription = `Document de ${req.body.category} pour le niveau ${req.body.level}.`;
+  const resource = await resourceService.createResource({
+    title,
+    description: defaultDescription,
+    category,
+    level,
+    format,
+    fileSize: req.file.size,
+    uploadedBy: req.user._id,
+    tempFilePath: req.file.path,
+    status: 'processing'
+  });
 
-  const resourceData = {
-    title: req.body.title,
-    description: req.body.description || defaultDescription,
-    category: req.body.category,
-    level: req.body.level,
-    fileUrl: cloudinaryResult.secure_url, 
-    fileSize: req.file.size || 0, 
-    format: format,
-    uploadedBy: req.user._id 
-  };
+  await uploadQueue.add('upload-to-cloudinary', {
+    resourceId: resource._id.toString(),
+    tempFilePath: req.file.path,
+    originalName: req.file.originalname
+  });
 
-  const newResource = await resourceService.createResource(resourceData);
-
-  res.status(201).json({
+  res.status(202).json({
     status: 'success',
-    data: { resource: newResource }
+    message: 'Votre document est en cours de traitement. Il sera disponible dans quelques instants.',
+    data: { resource }
   });
 });

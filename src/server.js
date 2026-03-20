@@ -1,5 +1,5 @@
 const http = require('http');
-const app = require('./app'); // Car app.js est dans src/ avec server.js
+const app = require('./app');
 const env = require('./config/env');
 const logger = require('./config/logger');
 const connectDB = require('./config/db');
@@ -13,6 +13,10 @@ process.on('uncaughtException', (err) => {
 
 const server = http.createServer(app);
 initSocket(server);
+
+// Initialisation des workers BullMQ
+require('./workers/feedQueue');
+require('./workers/uploadQueue');
 
 const startServer = async () => {
   await connectDB();

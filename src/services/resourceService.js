@@ -3,7 +3,8 @@ const AppError = require('../utils/AppError');
 
 exports.getAllResources = async (query) => {
   const { search, category, level, sort, page = 1, limit = 10 } = query;
-  const filter = {};
+
+  const filter = { status: 'ready' };
 
   if (search) {
     filter.$text = { $search: search };
@@ -12,7 +13,7 @@ exports.getAllResources = async (query) => {
   if (level) filter.level = level;
 
   const skip = (page - 1) * limit;
-  
+
   let queryBuilder = Resource.find(filter)
     .populate('uploadedBy', 'pseudo avatar')
     .skip(skip)
@@ -34,11 +35,18 @@ exports.getAllResources = async (query) => {
 
 exports.getResourceById = async (id) => {
   const resource = await Resource.findById(id).populate('uploadedBy', 'pseudo avatar');
-  if (!resource) throw new AppError('Ressource non trouvée', 404);
-  
+
+  if (!resource) {
+    throw new AppError('Ressource non trouvee.', 404);
+  }
+
+  if (resource.status !== 'ready') {
+    throw new AppError('Cette ressource est en cours de traitement, elle sera disponible dans quelques instants.', 202);
+  }
+
   resource.views += 1;
   await resource.save();
-  
+
   return resource;
 };
 
@@ -48,7 +56,11 @@ exports.trackDownload = async (id) => {
     { $inc: { downloads: 1 } },
     { new: true, runValidators: true }
   );
-  if (!resource) throw new AppError('Ressource non trouvée', 404);
+
+  if (!resource) {
+    throw new AppError('Ressource non trouvee.', 404);
+  }
+
   return resource;
 };
 

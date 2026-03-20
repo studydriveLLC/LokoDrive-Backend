@@ -1,21 +1,21 @@
 const mongoose = require('mongoose');
 
 const resourceSchema = new mongoose.Schema({
-  title: { 
-    type: String, 
-    required: [true, 'Le titre est obligatoire'], 
+  title: {
+    type: String,
+    required: [true, 'Le titre est obligatoire'],
     trim: true,
-    index: true 
+    index: true
   },
-  description: { 
-    type: String, 
-    required: [true, 'La description est obligatoire'] 
+  description: {
+    type: String,
+    required: [true, 'La description est obligatoire']
   },
-  fileUrl: { 
-    type: String, 
-    required: [true, 'L\'URL du fichier est obligatoire'] 
+  fileUrl: {
+    type: String,
+    default: null
   },
-  thumbnail: { 
+  thumbnail: {
     type: String,
     default: null
   },
@@ -28,33 +28,39 @@ const resourceSchema = new mongoose.Schema({
     enum: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'txt', 'jpg', 'png'],
     default: 'pdf'
   },
-  category: { 
-    type: String, 
-    required: [true, 'La catégorie est obligatoire'],
+  category: {
+    type: String,
+    required: [true, 'La categorie est obligatoire'],
     index: true
   },
-  level: { 
-    type: String, 
+  level: {
+    type: String,
     required: [true, 'Le niveau est obligatoire'],
     index: true
   },
   tags: [String],
-  uploadedBy: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'User', 
-    required: true 
+  uploadedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
   },
-  views: { 
-    type: Number, 
-    default: 0 
+  status: {
+    type: String,
+    enum: ['processing', 'ready', 'failed'],
+    default: 'processing',
+    index: true
   },
-  downloads: { 
-    type: Number, 
-    default: 0 
+  tempFilePath: {
+    type: String,
+    default: null
   },
-  createdAt: { 
-    type: Date, 
-    default: Date.now 
+  views: {
+    type: Number,
+    default: 0
+  },
+  downloads: {
+    type: Number,
+    default: 0
   }
 }, {
   timestamps: true,
