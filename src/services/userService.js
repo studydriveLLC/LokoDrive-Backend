@@ -13,8 +13,25 @@ const getUserProfile = async (userId) => {
 };
 
 const updateUserProfile = async (userId, data) => {
-  const allowedFields = ['avatar', 'university', 'phone', 'firstName', 'lastName'];
+  // Ajout de 'pseudo' pour permettre la modification via le frontend
+  const allowedFields = ['avatar', 'university', 'phone', 'firstName', 'lastName', 'pseudo'];
   const updateData = {};
+
+  // Sécurité : Vérification de l'unicité du pseudo si on tente de le modifier
+  if (data.pseudo) {
+    const existingUser = await User.findOne({ pseudo: data.pseudo, _id: { $ne: userId } }).lean();
+    if (existingUser) {
+      throw new AppError('Ce pseudo est déjà utilisé par un autre membre.', 409);
+    }
+  }
+
+  // Sécurité : Vérification de l'unicité du téléphone par anticipation
+  if (data.phone) {
+    const existingPhone = await User.findOne({ phone: data.phone, _id: { $ne: userId } }).lean();
+    if (existingPhone) {
+      throw new AppError('Ce numéro de téléphone est déjà utilisé.', 409);
+    }
+  }
 
   Object.keys(data).forEach((key) => {
     if (allowedFields.includes(key)) {
@@ -58,7 +75,6 @@ const deleteAccount = async (userId, mode = 'deactivate') => {
   }
 
   if (mode === 'hard') {
-    // Suppression définitive et nettoyage en cascade
     await Promise.all([
       Post.deleteMany({ author: userId }),
       Document.deleteMany({ author: userId }),
@@ -66,7 +82,6 @@ const deleteAccount = async (userId, mode = 'deactivate') => {
     ]);
     return { message: 'Compte et données associées supprimés définitivement.' };
   } else {
-    // Ta logique originale de soft delete préservée
     await User.findByIdAndUpdate(userId, {
       isActive: false,
       isDeleted: true,
