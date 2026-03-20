@@ -19,6 +19,7 @@ const chatRoutes = require('./routes/chatRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const userRoutes = require('./routes/userRoutes');
+const resourceRoutes = require('./routes/resourceRoutes');
 
 const app = express();
 
@@ -45,8 +46,7 @@ app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(cookieParser());
 app.use(compression());
 
-// 🔥 LE PATCH DE COMPATIBILITÉ EXPRESS 5 EST ICI 🔥
-// Il doit absolument être placé AVANT mongoSanitize()
+// Patch de compatibilite Express 5 pour mongoSanitize
 app.use((req, res, next) => {
   Object.defineProperty(req, 'query', {
     value: { ...req.query },
@@ -57,7 +57,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// Maintenant mongoSanitize peut s'exécuter sans crasher le serveur
 app.use(mongoSanitize());
 
 app.use((req, res, next) => {
@@ -86,13 +85,14 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'success', message: 'API operationnelle' });
 });
 
-app.use('/api/auth', authRoutes);
-app.use('/api/social', socialRoutes);
-app.use('/api/workspace', workspaceRoutes);
-app.use('/api/chat', chatRoutes);
-app.use('/api/notifications', notificationRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/users', userRoutes);
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/social', socialRoutes);
+app.use('/api/v1/workspace', workspaceRoutes);
+app.use('/api/v1/chat', chatRoutes);
+app.use('/api/v1/notifications', notificationRoutes);
+app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/users', userRoutes);
+app.use('/api/v1/resources', resourceRoutes);
 
 app.use((req, res, next) => {
   next(new AppError(`Impossible de trouver ${req.originalUrl} sur ce serveur!`, 404));

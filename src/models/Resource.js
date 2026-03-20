@@ -1,45 +1,67 @@
 const mongoose = require('mongoose');
 
 const resourceSchema = new mongoose.Schema({
-  title: {
-    type: String,
-    required: true,
+  title: { 
+    type: String, 
+    required: [true, 'Le titre est obligatoire'], 
     trim: true,
-    maxlength: 150,
+    index: true 
   },
-  description: {
+  description: { 
+    type: String, 
+    required: [true, 'La description est obligatoire'] 
+  },
+  fileUrl: { 
+    type: String, 
+    required: [true, 'L\'URL du fichier est obligatoire'] 
+  },
+  thumbnail: { 
     type: String,
-    trim: true,
-    maxlength: 500,
+    default: null
   },
-  major: { // Filière d'étude (ex: GMPE, Informatique)
+  fileSize: {
+    type: Number,
+    required: [true, 'La taille du fichier est requise']
+  },
+  format: {
     type: String,
-    required: true,
-    index: true,
+    enum: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'txt'],
+    default: 'pdf'
   },
-  fileUrl: {
-    type: String,
-    required: true,
+  category: { 
+    type: String, 
+    required: [true, 'La catégorie est obligatoire'],
+    index: true
   },
-  fileType: {
-    type: String,
-    required: true,
+  level: { 
+    type: String, 
+    required: [true, 'Le niveau est obligatoire'],
+    index: true
   },
-  author: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true,
+  tags: [String],
+  uploadedBy: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'User', 
+    required: true 
   },
-  stats: {
-    views: { type: Number, default: 0 },
-    downloads: { type: Number, default: 0 },
-    shares: { type: Number, default: 0 },
+  views: { 
+    type: Number, 
+    default: 0 
+  },
+  downloads: { 
+    type: Number, 
+    default: 0 
+  },
+  createdAt: { 
+    type: Date, 
+    default: Date.now 
   }
 }, {
   timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
 
-// Index composé pour trier rapidement les ressources par filière et popularité ou date
-resourceSchema.index({ major: 1, createdAt: -1 });
+resourceSchema.index({ title: 'text', description: 'text', tags: 'text' });
 
 module.exports = mongoose.model('Resource', resourceSchema);
