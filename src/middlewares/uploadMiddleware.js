@@ -1,9 +1,10 @@
 const multer = require('multer');
 const AppError = require('../utils/AppError');
+const os = require('os');
 const path = require('path');
 const fs = require('fs');
 
-const uploadDir = path.join(__dirname, '../uploads');
+const uploadDir = path.join(os.tmpdir(), 'studydrive_uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
