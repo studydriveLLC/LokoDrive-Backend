@@ -1,10 +1,10 @@
 const multer = require('multer');
 const AppError = require('../utils/AppError');
-const os = require('os');
 const path = require('path');
 const fs = require('fs');
 
-const uploadDir = path.join(os.tmpdir(), 'studydrive_uploads');
+// Création robuste du dossier temporaire calquée sur Yely
+const uploadDir = path.join(__dirname, '../uploads/temp');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
@@ -15,7 +15,13 @@ const storage = multer.diskStorage({
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + '-' + file.originalname);
+    
+    // LA SOLUTION TIRÉE DE YELY : Nettoyage strict du nom de fichier
+    // On remplace tout ce qui n'est pas alphanumérique ou un point par un tiret du bas
+    const originalName = file.originalname || 'document.pdf';
+    const safeName = originalName.replace(/[^a-zA-Z0-9.]/g, '_');
+    
+    cb(null, `file-${uniqueSuffix}-${safeName}`);
   }
 });
 
