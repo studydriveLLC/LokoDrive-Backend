@@ -23,6 +23,10 @@ const resourceRoutes = require('./routes/resourceRoutes');
 
 const app = express();
 
+// FIX CRITIQUE: Configuration pour Render (Reverse Proxy)
+// Indique a Express de faire confiance au proxy pour lire la vraie IP du client
+app.set('trust proxy', 1);
+
 app.use(helmet());
 
 app.use(cors({
