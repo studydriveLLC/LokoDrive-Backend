@@ -23,17 +23,17 @@ const resourceRoutes = require('./routes/resourceRoutes');
 
 const app = express();
 
-// FIX CRITIQUE: Configuration pour Render (Reverse Proxy)
-// Indique a Express de faire confiance au proxy pour lire la vraie IP du client
+// Configuration pour Render (Reverse Proxy)
 app.set('trust proxy', 1);
 
 app.use(helmet());
 
+// FIX CORS : Ajout de Accept, Origin et X-Requested-With pour debloquer Expo
 app.use(cors({
   origin: env.NODE_ENV === 'production' ? env.CLIENT_URL : '*',
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With']
 }));
 
 const limiter = rateLimit({
