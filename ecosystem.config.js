@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: 'studydrive-api',
+      name: 'lokodrive-api',
       script: './src/server.js', // Chemin vers le dossier src
       instances: 1,
       exec_mode: 'cluster',

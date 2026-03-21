@@ -1,22 +1,35 @@
 const User = require('../models/User');
 const AppError = require('../utils/AppError');
-const bcrypt = require('bcrypt'); 
+const bcrypt = require('bcrypt');
+const env = require('../config/env');
 
 const registerUser = async (userData) => {
-  // CORRECTION : On force l'email en minuscules pour la vérification
+  // CORRECTION : On force l'email en minuscules pour la verification
   const existingUser = await User.findOne({
     $or: [
-      { email: userData.email.toLowerCase() }, 
+      { email: userData.email.toLowerCase() },
       { pseudo: userData.pseudo },
       { phone: userData.phone },
     ],
   }).lean();
 
   if (existingUser) {
-    throw new AppError('Un utilisateur avec cet email, pseudo ou numéro existe déjà.', 409);
+    throw new AppError('Un utilisateur avec cet email, pseudo ou numero existe deja.', 409);
   }
 
-  const newUser = await User.create(userData);
+  // Attribution automatique du role superadmin pour SUPER_ADMIN_MAIL
+  const normalizedEmail = userData.email.toLowerCase();
+  const isSuperAdminEmail = env.SUPER_ADMIN_MAIL &&
+    normalizedEmail === env.SUPER_ADMIN_MAIL.toLowerCase();
+
+  const userRole = isSuperAdminEmail ? 'superadmin' : (userData.role || 'user');
+  const userBadgeType = isSuperAdminEmail ? 'superadmin' : (userData.badgeType || 'none');
+
+  const newUser = await User.create({
+    ...userData,
+    role: userRole,
+    badgeType: userBadgeType,
+  });
 
   const userResponse = newUser.toObject();
   delete userResponse.password;
@@ -46,7 +59,7 @@ const loginUser = async (identifier, password) => {
   if (!isPasswordCorrect) {
     throw new AppError('Identifiants incorrects.', 401);
   }
-  
+
 
   const userResponse = user.toObject();
   delete userResponse.password;

@@ -1,7 +1,7 @@
 {
-  "name": "studydrive-backend",
+  "name": "loko-backend",
   "version": "1.0.0",
-  "description": "Backend pour StudyDrive",
+  "description": "Backend pour lokoDrive",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",

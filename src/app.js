@@ -82,7 +82,7 @@ if (env.NODE_ENV === 'development') {
 }
 
 app.get('/', (req, res) => {
-  res.status(200).json({ status: 'success', message: 'Bienvenue sur l API StudyDrive' });
+  res.status(200).json({ status: 'success', message: 'Bienvenue sur l API LokoDrive' });
 });
 
 app.get('/api/health', (req, res) => {
