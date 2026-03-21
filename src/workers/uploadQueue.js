@@ -28,7 +28,7 @@ let cloudinaryResult;
 
 try {
 cloudinaryResult = await cloudinary.uploader.upload(tempFilePath, {
-folder: 'studydrive_resources',
+folder: 'Lokodrive_resources',
 resource_type: 'auto',
 use_filename: true,
 unique_filename: true

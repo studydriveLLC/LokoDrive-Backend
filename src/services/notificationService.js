@@ -28,7 +28,7 @@ const sendNotification = async ({ recipientId, senderId, type, referenceId, cont
       if (recipient && recipient.fcmTokens && recipient.fcmTokens.length > 0) {
         const message = {
           notification: {
-            title: 'StudyDrive',
+            title: 'LokoDrive',
             body: content,
           },
           data: {

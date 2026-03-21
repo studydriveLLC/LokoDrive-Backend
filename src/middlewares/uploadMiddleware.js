@@ -42,7 +42,7 @@ const fileFilter = (req, file, cb) => {
     // Dans Yély, si le mimetype est bizarre mais commence par image/, tu laisses passer (dans validateFileSignature).
     // Ici on assouplit pour laisser passer les octet-stream si on ne peut pas faire autrement, 
     // l'extension fera foi plus tard si besoin, ou on le bloque ici. 
-    // On reste strict sur les mimetypes autorisés pour StudyDrive.
+    // On reste strict sur les mimetypes autorisés pour LokoDrive.
     cb(new AppError('Format de fichier non supporté. Seuls les PDF, DOCX, XLSX et Images sont autorisés.', 400), false);
   }
 };
