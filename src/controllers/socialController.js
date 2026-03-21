@@ -21,6 +21,13 @@ const createPost = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
+const getPost = async (req, res, next) => {
+  try {
+    const post = await socialService.getPost(req.params.postId, req.user._id);
+    res.status(200).json({ status: 'success', data: { post } });
+  } catch (error) { next(error); }
+};
+
 const updatePost = async (req, res, next) => {
   try {
     const post = await socialService.updatePost(req.user._id, req.params.postId, req.body);
@@ -84,6 +91,7 @@ module.exports = {
   follow,
   unfollow,
   createPost,
+  getPost,
   updatePost,
   deletePost,
   toggleLike,

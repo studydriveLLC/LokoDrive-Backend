@@ -60,6 +60,8 @@ const createPost = async (authorId, postData) => {
     }
   });
 
+  await post.populate('author', 'firstName lastName pseudo university avatar badgeType');
+
   await feedQueue.add('fanout', { postId: post._id, authorId }, { 
     attempts: 3, backoff: { type: 'exponential', delay: 1000 }, removeOnComplete: true 
   });
@@ -70,6 +72,24 @@ const createPost = async (authorId, postData) => {
     { upsert: true }
   );
 
+  const postObj = post.toObject();
+  postObj.isLikedByMe = false;
+  delete postObj.likedBy;
+
+  return postObj;
+};
+
+const getPost = async (postId, userId) => {
+  const post = await Post.findById(postId)
+    .populate('author', 'firstName lastName pseudo university avatar badgeType')
+    .populate('comments.user', 'firstName lastName pseudo avatar badgeType')
+    .lean();
+
+  if (!post) throw new AppError('Publication introuvable.', 404);
+
+  post.isLikedByMe = post.likedBy ? post.likedBy.some(id => id.toString() === userId.toString()) : false;
+  delete post.likedBy;
+  
   return post;
 };
 
@@ -92,7 +112,6 @@ const deletePost = async (userId, postId) => {
   if (post.author.toString() !== userId.toString()) throw new AppError('Non autorise a supprimer cette publication.', 403);
 
   await Post.findByIdAndDelete(postId);
-  // Nettoyage du post dans tous les feeds ou il a ete distribue
   await Feed.updateMany({ "posts.post": postId }, { $pull: { posts: { post: postId } } });
   return true;
 };
@@ -129,6 +148,8 @@ const addComment = async (userId, postId, text) => {
   post.stats.comments += 1;
   await post.save();
 
+  await post.populate('comments.user', 'firstName lastName pseudo avatar badgeType');
+
   if (post.author.toString() !== userId.toString()) {
     await notificationService.sendNotification({
       recipientId: post.author, senderId: userId, type: 'system', referenceId: post._id,
@@ -149,6 +170,8 @@ const updateComment = async (userId, postId, commentId, text) => {
 
   comment.text = text;
   await post.save();
+  
+  await post.populate('comments.user', 'firstName lastName pseudo avatar badgeType');
   return comment;
 };
 
@@ -159,7 +182,6 @@ const deleteComment = async (userId, postId, commentId) => {
   const comment = post.comments.id(commentId);
   if (!comment) throw new AppError('Commentaire introuvable.', 404);
 
-  // Autorise l'auteur du commentaire OU l'auteur du post a supprimer le commentaire
   if (comment.user.toString() !== userId.toString() && post.author.toString() !== userId.toString()) {
     throw new AppError('Non autorise a supprimer ce commentaire.', 403);
   }
@@ -185,8 +207,8 @@ const getUserFeed = async (userId, page = 1, limit = 10) => {
   ).populate({
     path: 'posts.post',
     populate: [
-      { path: 'author', select: 'firstName lastName pseudo university avatar' },
-      { path: 'comments.user', select: 'firstName lastName pseudo avatar' }
+      { path: 'author', select: 'firstName lastName pseudo university avatar badgeType' },
+      { path: 'comments.user', select: 'firstName lastName pseudo avatar badgeType' }
     ]
   }).lean();
 
@@ -195,7 +217,6 @@ const getUserFeed = async (userId, page = 1, limit = 10) => {
   return feed.posts.map(p => {
     if (!p.post) return null;
     const post = p.post;
-    // Map isLikedByMe pour le frontend
     post.isLikedByMe = post.likedBy ? post.likedBy.some(id => id.toString() === userId.toString()) : false;
     delete post.likedBy; 
     return post;
@@ -206,6 +227,7 @@ module.exports = {
   followUser,
   unfollowUser,
   createPost,
+  getPost,
   updatePost,
   deletePost,
   toggleLike,
