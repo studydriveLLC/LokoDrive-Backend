@@ -3,6 +3,7 @@ const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/AppError');
 const { uploadQueue } = require('../workers/uploadQueue');
 const path = require('path');
+const { getIo } = require('../config/socket');
 
 const getFormatFromMime = (mimetype, filename) => {
   if (mimetype === 'application/pdf') return 'pdf';
@@ -26,8 +27,38 @@ exports.getResource = catchAsync(async (req, res) => {
   res.status(200).json({ status: 'success', data: { resource } });
 });
 
+exports.logView = catchAsync(async (req, res) => {
+  const resource = await resourceService.trackView(req.params.id);
+  
+  try {
+    getIo().emit('resource_stats_updated', { 
+      id: resource._id, 
+      views: resource.views, 
+      downloads: resource.downloads 
+    });
+  } catch (error) {
+    console.error('Erreur Socket lors de l emission de la vue:', error);
+  }
+
+  res.status(200).json({
+    status: 'success',
+    data: { id: resource._id, views: resource.views }
+  });
+});
+
 exports.logDownload = catchAsync(async (req, res) => {
   const resource = await resourceService.trackDownload(req.params.id);
+  
+  try {
+    getIo().emit('resource_stats_updated', { 
+      id: resource._id, 
+      views: resource.views, 
+      downloads: resource.downloads 
+    });
+  } catch (error) {
+    console.error('Erreur Socket lors de l emission du telechargement:', error);
+  }
+
   res.status(200).json({
     status: 'success',
     data: { id: resource._id, downloads: resource.downloads }
@@ -35,23 +66,15 @@ exports.logDownload = catchAsync(async (req, res) => {
 });
 
 exports.uploadResource = catchAsync(async (req, res, next) => {
-  console.log('[UPLOAD DEBUG] Entree dans uploadResource Controller');
-  
   if (!req.file) {
-    console.error('[UPLOAD ERROR] req.file est undefined. Le fichier n a pas passe Multer ou n a pas ete envoye correctement.');
     return next(new AppError('Aucun fichier n a ete recu. Verifiez la requete.', 400));
   }
 
-  console.log(`[UPLOAD DEBUG] Fichier recu par Multer : ${req.file.originalname} (${req.file.size} bytes)`);
-  console.log(`[UPLOAD DEBUG] Donnees du corps (req.body) :`, req.body);
-
   const { title, category, level, description } = req.body;
-
   const format = getFormatFromMime(req.file.mimetype, req.file.originalname);
   const defaultDescription = description || `Document de ${category} pour le niveau ${level}.`;
 
   try {
-    console.log('[UPLOAD DEBUG] Creation de la ressource en base de donnees...');
     const resource = await resourceService.createResource({
       title,
       description: defaultDescription,
@@ -63,15 +86,18 @@ exports.uploadResource = catchAsync(async (req, res, next) => {
       tempFilePath: req.file.path,
       status: 'processing'
     });
-    console.log(`[UPLOAD DEBUG] Ressource cree avec succes (ID: ${resource._id})`);
 
-    console.log('[UPLOAD DEBUG] Ajout de la tache dans uploadQueue...');
     await uploadQueue.add('upload-to-cloudinary', {
       resourceId: resource._id.toString(),
       tempFilePath: req.file.path,
       originalName: req.file.originalname
     });
-    console.log('[UPLOAD DEBUG] Tache ajoutee a la file d attente avec succes.');
+
+    try {
+      getIo().emit('new_resource', resource);
+    } catch (error) {
+      console.error('Erreur Socket lors de l emission de la nouvelle ressource:', error);
+    }
 
     res.status(202).json({
       status: 'success',
@@ -79,7 +105,6 @@ exports.uploadResource = catchAsync(async (req, res, next) => {
       data: { resource }
     });
   } catch (error) {
-    console.error('[UPLOAD ERROR CRITIQUE] Erreur lors de la creation de la ressource ou l ajout a la queue :', error);
     return next(new AppError('Erreur interne lors du traitement du fichier.', 500));
   }
 });

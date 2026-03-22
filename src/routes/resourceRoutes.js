@@ -10,6 +10,8 @@ router.use(authMiddleware.protect);
 
 router.get('/', resourceController.getResources);
 router.get('/:id', resourceController.getResource);
+
+router.post('/:id/view', resourceController.logView);
 router.post('/:id/download', resourceController.logDownload);
 
 router.post(
