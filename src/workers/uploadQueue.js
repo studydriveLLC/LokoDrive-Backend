@@ -29,7 +29,7 @@ const uploadWorker = new Worker('resource-upload', async (job) => {
 
   try {
     cloudinaryResult = await cloudinary.uploader.upload(tempFilePath, {
-      folder: 'Lokodrive_resources',
+      folder: 'LokoNet_resources',
       resource_type: 'auto',
       use_filename: true,
       unique_filename: true

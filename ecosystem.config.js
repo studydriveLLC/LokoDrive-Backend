@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: 'lokodrive-api',
+      name: 'LokoNet-api',
       script: './src/server.js', // Chemin vers le dossier src
       instances: 1,
       exec_mode: 'cluster',
