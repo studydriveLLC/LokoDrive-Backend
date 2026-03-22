@@ -29,6 +29,11 @@ const userSchema = new mongoose.Schema({
   
   isEmailVerified: { type: Boolean, default: false },
   isActive: { type: Boolean, default: true },
+
+  followers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  following: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Resource' }]
+
 }, { 
   timestamps: true 
 });

@@ -1,4 +1,8 @@
 const resourceService = require('../services/resourceService');
+const notificationService = require('../services/notificationService');
+const Resource = require('../models/Resource');
+const User = require('../models/User');
+const Report = require('../models/Report');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/AppError');
 const { uploadQueue } = require('../workers/uploadQueue');
@@ -22,16 +26,27 @@ exports.getResources = catchAsync(async (req, res) => {
   res.status(200).json({ status: 'success', data });
 });
 
-exports.getResource = catchAsync(async (req, res) => {
+exports.getResource = catchAsync(async (req, res, next) => {
   const resource = await resourceService.getResourceById(req.params.id);
+  if (!resource) {
+    return next(new AppError('Document introuvable.', 404));
+  }
   res.status(200).json({ status: 'success', data: { resource } });
 });
 
-exports.logView = catchAsync(async (req, res) => {
-  const resource = await resourceService.trackView(req.params.id);
+exports.logView = catchAsync(async (req, res, next) => {
+  const resource = await Resource.findByIdAndUpdate(
+    req.params.id,
+    { $inc: { views: 1 } },
+    { new: true }
+  );
+
+  if (!resource) {
+    return next(new AppError('Document introuvable.', 404));
+  }
   
   try {
-    getIo().emit('resource_stats_updated', { 
+    getIo().emit('resourceStatsUpdated', { 
       id: resource._id, 
       views: resource.views, 
       downloads: resource.downloads 
@@ -46,11 +61,19 @@ exports.logView = catchAsync(async (req, res) => {
   });
 });
 
-exports.logDownload = catchAsync(async (req, res) => {
-  const resource = await resourceService.trackDownload(req.params.id);
+exports.logDownload = catchAsync(async (req, res, next) => {
+  const resource = await Resource.findByIdAndUpdate(
+    req.params.id,
+    { $inc: { downloads: 1 } },
+    { new: true }
+  );
+
+  if (!resource) {
+    return next(new AppError('Document introuvable.', 404));
+  }
   
   try {
-    getIo().emit('resource_stats_updated', { 
+    getIo().emit('resourceStatsUpdated', { 
       id: resource._id, 
       views: resource.views, 
       downloads: resource.downloads 
@@ -94,7 +117,7 @@ exports.uploadResource = catchAsync(async (req, res, next) => {
     });
 
     try {
-      getIo().emit('new_resource', resource);
+      getIo().emit('newResource', resource);
     } catch (error) {
       console.error('Erreur Socket lors de l emission de la nouvelle ressource:', error);
     }
@@ -110,13 +133,13 @@ exports.uploadResource = catchAsync(async (req, res, next) => {
 });
 
 exports.updateResource = catchAsync(async (req, res, next) => {
-  const resource = await resourceService.getResourceById(req.params.id);
+  const resource = await Resource.findById(req.params.id);
   
   if (!resource) {
     return next(new AppError('Document introuvable.', 404));
   }
 
-  if (resource.uploadedBy._id.toString() !== req.user._id.toString()) {
+  if (resource.uploadedBy.toString() !== req.user._id.toString() && req.user.role !== 'admin' && req.user.role !== 'superadmin') {
     return next(new AppError('Vous n etes pas autorise a modifier ce document.', 403));
   }
 
@@ -135,16 +158,66 @@ exports.updateResource = catchAsync(async (req, res, next) => {
   });
 });
 
+exports.deleteResource = catchAsync(async (req, res, next) => {
+  const resource = await Resource.findById(req.params.id);
+  
+  if (!resource) {
+    return next(new AppError('Document introuvable.', 404));
+  }
+
+  if (resource.uploadedBy.toString() !== req.user._id.toString() && req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+    return next(new AppError('Vous n etes pas autorise a supprimer ce document.', 403));
+  }
+
+  await resource.deleteOne();
+
+  res.status(204).json({
+    status: 'success',
+    data: null
+  });
+});
+
 exports.toggleFavorite = catchAsync(async (req, res, next) => {
+  const resourceId = req.params.id;
+  const user = await User.findById(req.user._id);
+
+  if (!user) {
+    return next(new AppError('Utilisateur introuvable.', 404));
+  }
+
+  const isFavorited = user.favorites.includes(resourceId);
+  
+  if (isFavorited) {
+    user.favorites.pull(resourceId);
+  } else {
+    user.favorites.push(resourceId);
+  }
+  
+  await user.save();
+
   res.status(200).json({
     status: 'success',
-    message: 'Action sauvegarder enregistree (Pret pour le cablage Frontend).'
+    message: isFavorited ? 'Ressource retiree de vos favoris' : 'Ressource ajoutee a vos favoris',
+    data: { isFavorited: !isFavorited }
   });
 });
 
 exports.reportResource = catchAsync(async (req, res, next) => {
-  res.status(200).json({
+  const { reason } = req.body;
+  
+  if (!reason) {
+    return next(new AppError('Le motif du signalement est obligatoire.', 400));
+  }
+
+  const report = await Report.create({
+    resource: req.params.id,
+    reportedBy: req.user._id,
+    reason
+  });
+
+  res.status(201).json({
     status: 'success',
-    message: 'Le document a ete signale a l equipe de moderation.'
+    message: 'Le document a ete signale a l equipe de moderation.',
+    data: { report }
   });
 });

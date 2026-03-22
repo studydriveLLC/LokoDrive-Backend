@@ -11,8 +11,8 @@ router.use(authMiddleware.protect);
 router.get('/', resourceController.getResources);
 router.get('/:id', resourceController.getResource);
 
-router.post('/:id/view', resourceController.logView);
-router.post('/:id/download', resourceController.logDownload);
+router.patch('/:id/view', resourceController.logView);
+router.patch('/:id/download', resourceController.logDownload);
 
 router.post(
   '/',
@@ -22,6 +22,7 @@ router.post(
 );
 
 router.put('/:id', resourceController.updateResource);
+router.delete('/:id', resourceController.deleteResource);
 router.post('/:id/favorite', resourceController.toggleFavorite);
 router.post('/:id/report', resourceController.reportResource);
 

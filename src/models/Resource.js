@@ -25,17 +25,21 @@ const resourceSchema = new mongoose.Schema({
   },
   format: {
     type: String,
-    enum: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'txt', 'jpg', 'png'],
+    enum: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'txt', 'jpg', 'jpeg', 'png'],
     default: 'pdf'
   },
   category: {
     type: String,
     required: [true, 'La categorie est obligatoire'],
+    trim: true,
+    minlength: [2, 'La filiere doit contenir au moins 2 caracteres'],
+    maxlength: [100, 'La filiere est trop longue'],
     index: true
   },
   level: {
     type: String,
     required: [true, 'Le niveau est obligatoire'],
+    trim: true,
     index: true
   },
   tags: [String],
@@ -56,11 +60,13 @@ const resourceSchema = new mongoose.Schema({
   },
   views: {
     type: Number,
-    default: 0
+    default: 0,
+    min: 0
   },
   downloads: {
     type: Number,
-    default: 0
+    default: 0,
+    min: 0
   }
 }, {
   timestamps: true,
