@@ -11,7 +11,7 @@ const cookieOptions = {
   maxAge: 7 * 24 * 60 * 60 * 1000, 
 };
 
-const register = async (req, res) => {
+const register = catchAsync(async (req, res) => {
   const user = await authService.registerUser(req.body);
   const tokens = tokenService.generateAuthTokens(user._id);
 
@@ -24,9 +24,9 @@ const register = async (req, res) => {
       accessToken: tokens.accessToken,
     },
   });
-};
+});
 
-const login = async (req, res) => {
+const login = catchAsync(async (req, res) => {
   const { identifier, password } = req.body;
   
   const user = await authService.loginUser(identifier, password);
@@ -41,7 +41,7 @@ const login = async (req, res) => {
       accessToken: tokens.accessToken,
     },
   });
-};
+});
 
 const logout = (req, res) => {
   res.cookie('refreshToken', 'loggedout', {
@@ -53,7 +53,7 @@ const logout = (req, res) => {
 };
 
 // NOUVEAU : Changement de mot de passe
-const updateMyPassword = async (req, res) => {
+const updateMyPassword = catchAsync(async (req, res) => {
   const { currentPassword, password } = req.body;
   const user = await authService.updatePassword(req.user._id, currentPassword, password);
   
@@ -65,9 +65,9 @@ const updateMyPassword = async (req, res) => {
     status: 'success', 
     data: { user, accessToken: tokens.accessToken } 
   });
-};
+});
 
-const refreshToken = async (req, res) => {
+const refreshToken = catchAsync(async (req, res) => {
   const currentRefreshToken = req.cookies.refreshToken;
 
   if (!currentRefreshToken) {
@@ -99,12 +99,12 @@ const refreshToken = async (req, res) => {
       message: 'Refresh token invalide ou expiré. Veuillez vous reconnecter.' 
     });
   }
-};
+});
 
 module.exports = {
   register,
   login,
   logout,
-  updateMyPassword, // Exporter la nouvelle fonction
+  updateMyPassword,
   refreshToken,
 };
