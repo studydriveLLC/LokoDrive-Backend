@@ -27,10 +27,15 @@ const uploadWorker = new Worker('resource-upload', async (job) => {
 
   let cloudinaryResult;
 
+  // Optimisation Senior : Détection stricte pour les formats bureautiques
+  // Cloudinary nécessite souvent le mode 'raw' pour ne pas corrompre les docx/xls/zip
+  const isRawFormat = originalName.match(/\.(doc|docx|xls|xlsx|ppt|pptx|zip|rar|txt)$/i);
+  const resourceType = isRawFormat ? 'raw' : 'auto';
+
   try {
     cloudinaryResult = await cloudinary.uploader.upload(tempFilePath, {
       folder: 'LokoNet_resources',
-      resource_type: 'auto',
+      resource_type: resourceType,
       use_filename: true,
       unique_filename: true
     });
@@ -67,8 +72,9 @@ const uploadWorker = new Worker('resource-upload', async (job) => {
 
   try {
     const io = getIo();
-    io.emit('new_resource', updatedResource);
-    logger.info(`Signal temps reel 'new_resource' envoye a tous les clients.`);
+    // Correction Majeure : Utilisation de 'newResource' en camelCase pour matcher le Frontend
+    io.emit('newResource', updatedResource);
+    logger.info(`Signal temps reel 'newResource' envoye a tous les clients.`);
   } catch (err) {
     logger.error('Erreur lors de l emission Socket.io:', err);
   }
