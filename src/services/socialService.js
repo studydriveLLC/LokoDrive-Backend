@@ -5,6 +5,7 @@ const Feed = require('../models/Feed');
 const AppError = require('../utils/AppError');
 const { feedQueue } = require('../workers/feedQueue');
 const notificationService = require('./notificationService');
+const socketConfig = require('../config/socket');
 const mongoose = require('mongoose');
 
 const followUser = async (currentUserId, targetUserId) => {
@@ -29,11 +30,13 @@ const followUser = async (currentUserId, targetUserId) => {
   await notificationService.sendNotification({
     recipientId: targetUserId,
     senderId: currentUserId,
-    type: 'system',
+    type: 'follow',
     referenceId: currentUserId,
     content: `${currentUser.pseudo} vient de s'abonner a vous.`,
     dataPayload: { screen: 'Profile', userId: currentUserId.toString() }
   });
+
+  socketConfig.emitToUser(targetUserId, 'follow_stats_updated', { action: 'follow' });
 
   return true;
 };
@@ -48,6 +51,9 @@ const unfollowUser = async (currentUserId, targetUserId) => {
   if (!targetUser) throw new AppError('Utilisateur cible introuvable.', 404);
 
   await User.findByIdAndUpdate(currentUserId, { $pull: { following: targetUserId } });
+  
+  socketConfig.emitToUser(targetUserId, 'follow_stats_updated', { action: 'unfollow' });
+
   return true;
 };
 
