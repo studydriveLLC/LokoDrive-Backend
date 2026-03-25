@@ -1,15 +1,12 @@
+//src/services/notificationService.js
 const firebaseAdmin = require('../config/firebase');
 const Notification = require('../models/Notification');
 const User = require('../models/User');
 const socketConfig = require('../config/socket');
 const logger = require('../config/logger');
 
-/**
- * Fonction centrale pour notifier un utilisateur (In-App + Push FCM + Socket)
- */
 const sendNotification = async ({ recipientId, senderId, type, referenceId, content, dataPayload }) => {
   try {
-    // 1. Sauvegarde en base de données (In-App Notification)
     const notification = await Notification.create({
       recipient: recipientId,
       sender: senderId,
@@ -18,10 +15,8 @@ const sendNotification = async ({ recipientId, senderId, type, referenceId, cont
       content
     });
 
-    // 2. Envoi en Temps Réel si l'utilisateur est connecté (Pastille rouge)
     socketConfig.emitToUser(recipientId, 'new_notification', notification);
 
-    // 3. Envoi de la Push Notification (FCM)
     if (firebaseAdmin) {
       const recipient = await User.findById(recipientId).select('fcmTokens').lean();
       
@@ -34,14 +29,13 @@ const sendNotification = async ({ recipientId, senderId, type, referenceId, cont
           data: {
             type,
             referenceId: referenceId.toString(),
-            ...dataPayload // Données invisibles utilisées par le frontend pour le Deep Linking
+            ...dataPayload 
           },
-          tokens: recipient.fcmTokens, // Envoi à tous les appareils de l'utilisateur
+          tokens: recipient.fcmTokens, 
         };
 
         const response = await firebaseAdmin.messaging().sendMulticast(message);
         
-        // Nettoyage des tokens invalides (ex: l'utilisateur a désinstallé l'application)
         if (response.failureCount > 0) {
           const failedTokens = [];
           response.responses.forEach((resp, idx) => {
@@ -54,7 +48,7 @@ const sendNotification = async ({ recipientId, senderId, type, referenceId, cont
             await User.findByIdAndUpdate(recipientId, {
               $pull: { fcmTokens: { $in: failedTokens } }
             });
-            logger.info(`Nettoyage de ${failedTokens.length} tokens FCM obsolètes pour l'utilisateur ${recipientId}`);
+            logger.info(`Nettoyage de ${failedTokens.length} tokens FCM obsoletes pour l'utilisateur ${recipientId}`);
           }
         }
       }
@@ -63,7 +57,6 @@ const sendNotification = async ({ recipientId, senderId, type, referenceId, cont
     return notification;
   } catch (error) {
     logger.error('Erreur dans notificationService:', error);
-    // On ne jette pas l'erreur pour ne pas bloquer le flux principal (ex: empêcher un like de s'enregistrer si la notif échoue)
   }
 };
 
@@ -85,7 +78,29 @@ const markAsRead = async (notificationId, userId) => {
   return true;
 };
 
-// Fonction appelée par le frontend juste après le login
+const markAllAsRead = async (userId) => {
+  await Notification.updateMany(
+    { recipient: userId, isRead: false },
+    { isRead: true }
+  );
+  return true;
+};
+
+const deleteNotification = async (notificationId, userId) => {
+  await Notification.findOneAndDelete({ _id: notificationId, recipient: userId });
+  return true;
+};
+
+const deleteMultipleNotifications = async (notificationIds, userId) => {
+  await Notification.deleteMany({ _id: { $in: notificationIds }, recipient: userId });
+  return true;
+};
+
+const deleteAllNotifications = async (userId) => {
+  await Notification.deleteMany({ recipient: userId });
+  return true;
+};
+
 const registerDeviceToken = async (userId, fcmToken) => {
   await User.findByIdAndUpdate(
     userId,
@@ -106,6 +121,10 @@ module.exports = {
   sendNotification,
   getUserNotifications,
   markAsRead,
+  markAllAsRead,
+  deleteNotification,
+  deleteMultipleNotifications,
+  deleteAllNotifications,
   registerDeviceToken,
   unregisterDeviceToken
 };
