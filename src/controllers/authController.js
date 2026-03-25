@@ -1,4 +1,5 @@
 // src/controllers/authController.js
+
 const authService = require('../services/authService');
 const tokenService = require('../services/tokenService');
 const env = require('../config/env');
@@ -22,6 +23,7 @@ const register = catchAsync(async (req, res) => {
     data: {
       user,
       accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken, // AJOUT : Envoi du refresh token au client
     },
   });
 });
@@ -39,6 +41,7 @@ const login = catchAsync(async (req, res) => {
     data: {
       user,
       accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken, // AJOUT : Envoi du refresh token au client
     },
   });
 });
@@ -52,23 +55,28 @@ const logout = (req, res) => {
   res.status(200).json({ status: 'success' });
 };
 
-// NOUVEAU : Changement de mot de passe
+// Changement de mot de passe
 const updateMyPassword = catchAsync(async (req, res) => {
   const { currentPassword, password } = req.body;
   const user = await authService.updatePassword(req.user._id, currentPassword, password);
   
-  // Générer de nouveaux tokens pour ne pas déconnecter l'utilisateur après le changement
+  // Generer de nouveaux tokens pour ne pas deconnecter l'utilisateur apres le changement
   const tokens = tokenService.generateAuthTokens(user._id);
   res.cookie('refreshToken', tokens.refreshToken, cookieOptions);
   
   res.status(200).json({ 
     status: 'success', 
-    data: { user, accessToken: tokens.accessToken } 
+    data: { 
+      user, 
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken // AJOUT : Renvoi du nouveau refresh token
+    } 
   });
 });
 
 const refreshToken = catchAsync(async (req, res) => {
-  const currentRefreshToken = req.cookies.refreshToken;
+  // CORRECTION : Lecture prioritaire dans le body pour l'appli React Native
+  const currentRefreshToken = req.body.refreshToken || req.cookies.refreshToken;
 
   if (!currentRefreshToken) {
     return res.status(401).json({ 
@@ -87,6 +95,7 @@ const refreshToken = catchAsync(async (req, res) => {
       status: 'success',
       data: {
         accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken, // AJOUT : Renvoi du nouveau refresh token en JSON
       },
     });
   } catch (error) {
@@ -96,7 +105,7 @@ const refreshToken = catchAsync(async (req, res) => {
     });
     return res.status(401).json({ 
       status: 'fail', 
-      message: 'Refresh token invalide ou expiré. Veuillez vous reconnecter.' 
+      message: 'Refresh token invalide ou expire. Veuillez vous reconnecter.' 
     });
   }
 });

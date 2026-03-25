@@ -1,14 +1,14 @@
+// src/services/tokenService.js
 const jwt = require('jsonwebtoken');
 const env = require('../config/env');
-const crypto = require('crypto');
 
-// En attendant d'avoir des variables d'environnement JWT dediees dans .env
-// Nous utilisons des cles generees a la volee pour le fallback (a configurer en prod)
-const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m'; // Access token de courte duree
+// Utilisation stricte des variables d'environnement de la configuration globale.
+// Suppression de crypto.randomBytes pour eviter l'invalidation a chaque redemarrage du serveur.
+const JWT_SECRET = env.JWT_SECRET || 'lokonet_default_secret_key_12345';
+const JWT_EXPIRES_IN = env.JWT_EXPIRES_IN || '15m';
 
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || crypto.randomBytes(32).toString('hex');
-const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
+const JWT_REFRESH_SECRET = env.JWT_REFRESH_SECRET || 'lokonet_default_refresh_secret_key_12345';
+const JWT_REFRESH_EXPIRES_IN = env.JWT_REFRESH_EXPIRES_IN || '7d';
 
 const generateAuthTokens = (userId) => {
   const accessToken = jwt.sign({ id: userId }, JWT_SECRET, {
