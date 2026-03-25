@@ -1,3 +1,4 @@
+// src/models/Resource.js
 const mongoose = require('mongoose');
 
 const resourceSchema = new mongoose.Schema({
@@ -64,6 +65,11 @@ const resourceSchema = new mongoose.Schema({
     min: 0
   },
   downloads: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  shares: {
     type: Number,
     default: 0,
     min: 0

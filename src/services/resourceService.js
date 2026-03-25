@@ -29,10 +29,12 @@ exports.getAllResources = async (query) => {
   if (level) filter.level = level;
 
   const skip = (page - 1) * limit;
-  let queryBuilder = Resource.find(filter).populate('uploadedBy', 'pseudo avatar').skip(skip).limit(limit);
+  // POPULATE MIS A JOUR : Ajout de isVerified et badge pour l'UI Frontend
+  let queryBuilder = Resource.find(filter).populate('uploadedBy', 'pseudo avatar isVerified badge role').skip(skip).limit(limit);
 
   if (sort === 'popular') {
-    queryBuilder = queryBuilder.sort({ downloads: -1, views: -1 });
+    // AJOUT : Prise en compte des partages dans l'algorithme de popularite
+    queryBuilder = queryBuilder.sort({ downloads: -1, shares: -1, views: -1 });
   } else {
     queryBuilder = queryBuilder.sort({ createdAt: -1 });
   }
@@ -51,11 +53,11 @@ exports.getAllResources = async (query) => {
   return result;
 };
 
-// NOUVEAU : Récupération des ressources de l'utilisateur pour son profil (Temps réel, pas de cache agressif)
 exports.getMyResources = async (userId) => {
   const resources = await Resource.find({ uploadedBy: userId })
     .sort({ createdAt: -1 })
-    .populate('uploadedBy', 'pseudo avatar');
+    // POPULATE MIS A JOUR
+    .populate('uploadedBy', 'pseudo avatar isVerified badge role');
   return resources;
 };
 
@@ -66,7 +68,8 @@ exports.getResourceById = async (id) => {
     if (cachedData) return JSON.parse(cachedData);
   } catch (err) {}
 
-  const resource = await Resource.findById(id).populate('uploadedBy', 'pseudo avatar');
+  // POPULATE MIS A JOUR
+  const resource = await Resource.findById(id).populate('uploadedBy', 'pseudo avatar isVerified badge role');
   if (!resource) throw new AppError('Ressource non trouvee.', 404);
   if (resource.status !== 'ready') throw new AppError('Cette ressource est en cours de traitement, elle sera disponible dans quelques instants.', 202);
 
@@ -97,13 +100,23 @@ exports.trackDownload = async (id) => {
   return resource;
 };
 
+// NOUVEAU : Traitement du compteur de partages avec invalidation du cache
+exports.trackShare = async (id) => {
+  const resource = await Resource.findByIdAndUpdate(id, { $inc: { shares: 1 } }, { new: true, runValidators: true });
+  if (!resource) throw new AppError('Ressource non trouvee.', 404);
+  try {
+     await redisClient.del(`resource:detail:${id}`);
+     await invalidateFeedCache();
+  } catch (err) {}
+  return resource;
+};
+
 exports.createResource = async (resourceData) => {
   const resource = await Resource.create(resourceData);
   await invalidateFeedCache();
   return resource;
 };
 
-// NOUVEAU : Logique de modification sécurisée et centralisée
 exports.updateResource = async (id, userId, userRole, updateData) => {
   const resource = await Resource.findById(id);
   if (!resource) throw new AppError('Document introuvable.', 404);
@@ -118,14 +131,13 @@ exports.updateResource = async (id, userId, userRole, updateData) => {
   });
 
   await resource.save();
-  await invalidateFeedCache(); // Purge du cache
+  await invalidateFeedCache(); 
   
-  // On renvoie la ressource avec le populate pour que le frontend (et le socket) ait l'avatar
-  await resource.populate('uploadedBy', 'pseudo avatar');
+  // POPULATE MIS A JOUR
+  await resource.populate('uploadedBy', 'pseudo avatar isVerified badge role');
   return resource;
 };
 
-// NOUVEAU : Logique de suppression sécurisée et centralisée
 exports.deleteResource = async (id, userId, userRole) => {
   const resource = await Resource.findById(id);
   if (!resource) throw new AppError('Document introuvable.', 404);
@@ -135,6 +147,6 @@ exports.deleteResource = async (id, userId, userRole) => {
   }
 
   await resource.deleteOne();
-  await invalidateFeedCache(); // Purge du cache
+  await invalidateFeedCache(); 
   return true;
 };

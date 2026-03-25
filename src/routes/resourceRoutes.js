@@ -10,12 +10,13 @@ const router = express.Router();
 router.use(authMiddleware.protect);
 
 router.get('/', resourceController.getResources);
-// NOUVEAU : Route specifique pour le profil (doit etre avant /:id)
 router.get('/me', resourceController.getMyResources);
 router.get('/:id', resourceController.getResource);
 
 router.patch('/:id/view', resourceController.logView);
 router.patch('/:id/download', resourceController.logDownload);
+// NOUVEAU : Route pour logger les partages (alignee sur le standard PATCH de ton API)
+router.patch('/:id/share', resourceController.logShare);
 
 router.post(
   '/',

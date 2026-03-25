@@ -27,7 +27,6 @@ exports.getResources = catchAsync(async (req, res) => {
   res.status(200).json({ status: 'success', data });
 });
 
-// NOUVEAU : Récupération spécifique pour le profil
 exports.getMyResources = catchAsync(async (req, res, next) => {
   const resources = await resourceService.getMyResources(req.user._id);
   res.status(200).json({ 
@@ -51,7 +50,8 @@ exports.logView = catchAsync(async (req, res, next) => {
     getIo().emit('resourceStatsUpdated', { 
       id: resource._id.toString(), 
       views: resource.views, 
-      downloads: resource.downloads 
+      downloads: resource.downloads,
+      shares: resource.shares || 0
     });
   } catch (error) {
     console.error('Erreur Socket lors de l emission de la vue:', error);
@@ -70,7 +70,8 @@ exports.logDownload = catchAsync(async (req, res, next) => {
     getIo().emit('resourceStatsUpdated', { 
       id: resource._id.toString(), 
       views: resource.views, 
-      downloads: resource.downloads 
+      downloads: resource.downloads,
+      shares: resource.shares || 0
     });
   } catch (error) {
     console.error('Erreur Socket lors de l emission du telechargement:', error);
@@ -79,6 +80,26 @@ exports.logDownload = catchAsync(async (req, res, next) => {
   res.status(200).json({
     status: 'success',
     data: { id: resource._id, downloads: resource.downloads }
+  });
+});
+
+exports.logShare = catchAsync(async (req, res, next) => {
+  const resource = await resourceService.trackShare(req.params.id);
+  
+  try {
+    getIo().emit('resourceStatsUpdated', { 
+      id: resource._id.toString(), 
+      views: resource.views, 
+      downloads: resource.downloads,
+      shares: resource.shares || 0
+    });
+  } catch (error) {
+    console.error('Erreur Socket lors de l emission du partage:', error);
+  }
+
+  res.status(200).json({
+    status: 'success',
+    data: { id: resource._id, shares: resource.shares }
   });
 });
 
@@ -121,11 +142,9 @@ exports.uploadResource = catchAsync(async (req, res, next) => {
 });
 
 exports.updateResource = catchAsync(async (req, res, next) => {
-  // On remplace la logique brute par l'appel au service sécurisé
   const resource = await resourceService.updateResource(req.params.id, req.user._id, req.user.role, req.body);
   
   try {
-    // Émission temps réel aux autres utilisateurs
     getIo().emit('resourceUpdated', resource);
   } catch (error) {
     console.error('Erreur Socket update:', error);
@@ -138,11 +157,9 @@ exports.updateResource = catchAsync(async (req, res, next) => {
 });
 
 exports.deleteResource = catchAsync(async (req, res, next) => {
-  // On remplace la logique brute par l'appel au service sécurisé
   await resourceService.deleteResource(req.params.id, req.user._id, req.user.role);
   
   try {
-    // Émission temps réel pour retirer la carte chez les autres utilisateurs
     getIo().emit('resourceDeleted', { id: req.params.id });
   } catch (error) {
     console.error('Erreur Socket delete:', error);
