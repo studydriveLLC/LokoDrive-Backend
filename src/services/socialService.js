@@ -1,4 +1,4 @@
-src/services/socialService.js
+//src/services/socialService.js
 const User = require('../models/User');
 const Post = require('../models/Post');
 const Feed = require('../models/Feed');

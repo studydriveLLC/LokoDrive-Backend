@@ -1,4 +1,4 @@
-src/controllers/socialController.js
+//src/controllers/socialController.js
 const socialService = require('../services/socialService');
 
 const follow = async (req, res, next) => {

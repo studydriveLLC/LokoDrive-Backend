@@ -1,4 +1,4 @@
-src/services/resourceService.js
+//src/services/resourceService.js
 const Resource = require('../models/Resource');
 const User = require('../models/User');
 const AppError = require('../utils/AppError');

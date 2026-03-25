@@ -1,4 +1,4 @@
-src/routes/socialRoutes.js
+//src/routes/socialRoutes.js
 const express = require('express');
 const socialController = require('../controllers/socialController');
 const socialValidation = require('../validations/socialValidation');
