@@ -2,6 +2,7 @@
 const User = require('../models/User');
 const Post = require('../models/Post');
 const Document = require('../models/Document');
+const Resource = require('../models/Resource');
 const CertificationRequest = require('../models/CertificationRequest');
 const AppError = require('../utils/AppError');
 const cloudinary = require('../config/cloudinary');
@@ -12,10 +13,21 @@ const getUserProfile = async (userId) => {
   if (!user) {
     throw new AppError('Utilisateur introuvable.', 404);
   }
-  return user;
+
+  const [postsCount, resourcesCount] = await Promise.all([
+    Post.countDocuments({ author: userId }),
+    Resource.countDocuments({ uploadedBy: userId })
+  ]);
+
+  return {
+    ...user,
+    publicStats: {
+      posts: postsCount,
+      documents: resourcesCount
+    }
+  };
 };
 
-// NOUVEAU : Fonction sécurisée pour le profil public
 const getPublicUserProfile = async (targetUserId) => {
   const user = await User.findById(targetUserId)
     .select('-password -fcmTokens -email -phone')
@@ -25,16 +37,16 @@ const getPublicUserProfile = async (targetUserId) => {
     throw new AppError('Utilisateur introuvable.', 404);
   }
 
-  const [postsCount, documentsCount] = await Promise.all([
+  const [postsCount, resourcesCount] = await Promise.all([
     Post.countDocuments({ author: targetUserId }),
-    Document.countDocuments({ $or: [{ author: targetUserId }, { uploadedBy: targetUserId }] })
+    Resource.countDocuments({ uploadedBy: targetUserId })
   ]);
 
   return {
     ...user,
     publicStats: {
       posts: postsCount,
-      documents: documentsCount
+      documents: resourcesCount
     }
   };
 };
